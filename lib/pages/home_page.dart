@@ -34,7 +34,7 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         backgroundColor: Colors.deepPurple,
         centerTitle: true,
-        title: const Text('Chats'),
+        title: const Text('My Chats'),
         actions: [
           IconButton(
             onPressed: () {
@@ -99,10 +99,13 @@ class _HomePageState extends State<HomePage> {
               return const Text('No contacts');
             }
 
-            return ListView(
-              children: userDocs
-                  .map<Widget>((doc) => _buildUserListItem(doc))
-                  .toList(),
+            return ListView.separated(
+              separatorBuilder: (context, index) => Divider(
+                color: Colors.deepPurple, // Farbe der Trennlinie
+                height: 1, // Höhe der Trennlinie
+              ),
+              itemCount: userDocs.length,
+              itemBuilder: (context, index) => _buildUserListItem(userDocs[index]),
             );
           },
         );
@@ -111,31 +114,103 @@ class _HomePageState extends State<HomePage> {
   }
 
 
-
   Widget _buildUserListItem(DocumentSnapshot document) {
     Map<String, dynamic> data = document.data()! as Map<String, dynamic>;
 
+    final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
     String tempUsername = data['username'].toString().toLowerCase();
-    String tempEmail= '$tempUsername@fake.mail';
+    String tempEmail = '$tempUsername@fake.mail';
+    final String currentUserId = _firebaseAuth.currentUser!.uid;
+    String newMessage = '';
 
-    //display all users except the current user
-    if(_auth.currentUser!.email.toString() != tempEmail){
-      return ListTile(
-        title: Text(data['username']),
-        onTap: (){
-          //pass the clicked user's UID to the chat page
-          Navigator.push(context, MaterialPageRoute(builder: (context) => ChatPage(
-            receiverUserEmail: data['username'],
-            receiverUserID: data['uid'],
-          ), 
-          ),
+    List<String> ids = [currentUserId, data['uid']];
+    ids.sort(); // damit es immer die gleiche ID ist, für alle Chatpartner
+    String chatRoomId = ids.join("_"); // kombiniert die IDs
+
+    // Display all users except the current user
+    if (_auth.currentUser!.email.toString() != tempEmail) {
+      return StreamBuilder<DocumentSnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('chat_rooms')
+            .doc(chatRoomId)
+            .collection('counter')
+            .doc(currentUserId)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return const Text('Error');
+          }
+
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Text('Loading..');
+          }
+
+          if (snapshot.hasData && snapshot.data!.exists) {
+            int newMessageCount = snapshot.data!.get('newMessageCounter') ?? 0;
+
+            // Zeige den Counter nur an, wenn er größer als 0 ist
+            if (newMessageCount > 0) {
+              if (newMessageCount == 1) {
+                newMessage = ' new message';
+              } else {
+                newMessage = ' new messages';
+              }
+              return ListTile(
+                tileColor: Colors.deepPurple.shade200, // Hintergrundfarbe ändern
+                contentPadding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                title: Text(
+                  data['username'],
+                  style: TextStyle(fontSize: 18.0),
+                ),
+                subtitle: Text(
+                  '$newMessageCount$newMessage',
+                  style: TextStyle(fontSize: 14.0, color: Colors.white),
+                ),
+                onTap: () {
+                  // pass the clicked user's UID to the chat page
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ChatPage(
+                        receiverUserEmail: data['username'],
+                        receiverUserID: data['uid'],
+                      ),
+                    ),
+                  );
+                },
+              );
+            }
+          }
+
+          // Zeige nur den Benutzernamen ohne den Counter
+          return ListTile(
+            tileColor: Colors.deepPurple.shade200, // Hintergrundfarbe ändern
+            contentPadding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            title: Text(
+              data['username'],
+              style: TextStyle(fontSize: 18.0),
+            ),
+            onTap: () {
+              // pass the clicked user's UID to the chat page
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ChatPage(
+                    receiverUserEmail: data['username'],
+                    receiverUserID: data['uid'],
+                  ),
+                ),
+              );
+            },
           );
-
         },
       );
     } else {
-      //return empty container
+      // Return an empty container
       return Container();
     }
   }
+
+
 }
+

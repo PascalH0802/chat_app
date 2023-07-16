@@ -44,6 +44,20 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    // Setze den Counter auf 0, wenn die ChatPage geöffnet wird
+    resetCounter();
+  }
+
+  @override
+  void dispose() {
+    // Setze den Counter auf 0, wenn die ChatPage geschlossen wird
+    resetCounter();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -159,5 +173,21 @@ class _ChatPageState extends State<ChatPage> {
 
       ],
     );
+  }
+
+  void resetCounter() async {
+    final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
+    final String currentUserId = _firebaseAuth.currentUser!.uid;
+
+    List<String> ids = [currentUserId, widget.receiverUserID];
+    ids.sort();
+    String chatRoomId = ids.join("_");
+
+    await FirebaseFirestore.instance
+        .collection('chat_rooms')
+        .doc(chatRoomId)
+        .collection('counter')
+        .doc(currentUserId)
+        .set({'newMessageCounter': 0});
   }
 }

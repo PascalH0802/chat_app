@@ -45,6 +45,8 @@ class ChatService extends ChangeNotifier {
         .collection('messages')
         .add(newMessage
         .toMap());
+
+    updateNewMessageCounter(chatRoomId, receiverId);
   }
 
 
@@ -64,4 +66,40 @@ class ChatService extends ChangeNotifier {
   }
 
 
-}
+  void updateNewMessageCounter(String chatRoomId, String receiverId) {
+    final CollectionReference counterCollection = FirebaseFirestore.instance
+        .collection('chat_rooms')
+        .doc(chatRoomId)
+        .collection('counter');
+
+    final DocumentReference receiverDocRef = counterCollection.doc(receiverId);
+
+    receiverDocRef.get().then((receiverSnapshot) {
+      if (!receiverSnapshot.exists) {
+        // 'receiverId'-Dokument existiert nicht, es erstellen mit newMessageCounter = 0
+        receiverDocRef.set({'newMessageCounter': 1});
+      } else {
+        // 'receiverId'-Dokument existiert, aktuellen newMessageCounter-Wert abrufen
+        Map<String, dynamic>? data = receiverSnapshot.data() as Map<String, dynamic>?;
+
+        int currentCounter = data?['newMessageCounter'] ?? 0;
+
+        // newMessageCounter um 1 erhöhen
+        int newCounterValue = currentCounter + 1;
+
+        // Den aktualisierten newMessageCounter-Wert im Dokument speichern
+        receiverDocRef.update({'newMessageCounter': newCounterValue}).then((_) {
+          print('newMessageCounter erfolgreich aktualisiert!');
+        }).catchError((error) {
+          print('Fehler beim Aktualisieren des newMessageCounter: $error');
+        });
+      }
+    }).catchError((error) {
+      print('Fehler beim Lesen des Dokuments: $error');
+    });
+  }
+  }
+
+
+
+

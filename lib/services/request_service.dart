@@ -60,6 +60,8 @@ class RequestService extends ChangeNotifier {
       'sentContactRequests': FieldValue.arrayRemove([currentUserId])
     });
 
+
+
   }
 
   Future<void> declineRequest(String otherUserId) async {
