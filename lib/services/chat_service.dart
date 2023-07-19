@@ -47,6 +47,16 @@ class ChatService extends ChangeNotifier {
         .toMap());
 
     updateNewMessageCounter(chatRoomId, receiverId);
+
+    final DocumentReference chatroomDocRef = FirebaseFirestore.instance
+        .collection('chat_rooms')
+        .doc(chatRoomId);
+
+
+    // 'receiverId'-Dokument existiert nicht, es erstellen mit newMessageCounter = 0
+    chatroomDocRef.update({
+      'lastContact': Timestamp.now(),
+    });
   }
 
 

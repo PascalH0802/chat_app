@@ -60,6 +60,19 @@ class RequestService extends ChangeNotifier {
       'sentContactRequests': FieldValue.arrayRemove([currentUserId])
     });
 
+    List<String> ids = [currentUserId, otherUserId];
+    ids.sort(); //damit es immer die gleiche ID ist, für alle Chatpartner
+    String chatRoomId = ids.join("_"); //kombiniert die IDs
+
+    final DocumentReference chatroomDocRef = FirebaseFirestore.instance
+        .collection('chat_rooms')
+        .doc(chatRoomId);
+
+
+        // 'receiverId'-Dokument existiert nicht, es erstellen mit newMessageCounter = 0
+    chatroomDocRef.set({
+      'lastContact': Timestamp.now(),
+    });
 
 
   }
