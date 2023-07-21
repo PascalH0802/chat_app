@@ -6,6 +6,7 @@ class Message {
   final String receiverId;
   final String message;
   final Timestamp timestamp;
+  final int isFile;
 
 
   Message({
@@ -13,6 +14,7 @@ class Message {
     required this.message,
     required this.receiverId,
     required this.senderId,
+    required this.isFile
   });
 
   //convert to a map, da informationen in firebase so gespeichert werden
@@ -21,7 +23,8 @@ class Message {
       'senderId': senderId,
       'receiverId': receiverId,
       'message': message,
-      'timestamp': timestamp
+      'timestamp': timestamp,
+      'isFile': isFile,
     };
   }
 

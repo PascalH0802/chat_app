@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
+import 'dart:async';
 
 import 'package:anonymous_chat/components/chat_bubble.dart';
 import 'package:anonymous_chat/services/chat_service.dart';
@@ -8,6 +10,15 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:encrypt/encrypt.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:math';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:chewie/chewie.dart';
+import 'package:flutter/material.dart';
+import 'package:video_player/video_player.dart';
+import 'package:multi_image_picker/multi_image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+
 
 import '../components/my_chat_text_field.dart';
 
@@ -30,6 +41,37 @@ class _ChatPageState extends State<ChatPage> {
   final ChatService _chatService = ChatService();
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
   final EncryptService _encryptService = EncryptService();
+  String? _uploadedFileName; // Klasseigenschaft zum Speichern des Dateinamens
+
+  File? _photo;
+  final FilePicker _picker = FilePicker.platform;
+
+  Future imgFromGallery() async {
+    final pickedFiles = await _picker.pickFiles(
+      allowMultiple: true,
+    );
+    if (pickedFiles != null) {
+      // Loop through the selected files and upload them
+      for (PlatformFile file in pickedFiles.files) {
+
+          String fileName = await _chatService.uploadFile(File(file.path!));
+          if (fileName.isNotEmpty) {
+            _uploadedFileName = fileName;
+            await _chatService.sendFileMessage(widget.receiverUserID, _uploadedFileName!);
+          }
+
+      }
+    } else {
+      print('No files selected');
+    }
+  }
+
+  void sendFileMessage() async {
+    if (_uploadedFileName != null) {
+      await _chatService.sendFileMessage(widget.receiverUserID, _uploadedFileName!);
+      _uploadedFileName = null; // Nach dem Versenden der Datei zurücksetzen
+    }
+  }
 
 
 
@@ -42,6 +84,8 @@ class _ChatPageState extends State<ChatPage> {
       _messageController.clear();
     }
   }
+
+
 
   @override
   void initState() {
@@ -103,77 +147,135 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   // build message item
-  Widget _buildMessageItem(DocumentSnapshot document){
+  Widget _buildMessageItem(DocumentSnapshot document) {
     Map<String, dynamic> data = document.data() as Map<String, dynamic>;
     Timestamp timestamp = data['timestamp'];
-
-    // align the messages to the right if the sender is the current user, otherwise to the left
-    var alignment = (data['senderId'] == _firebaseAuth.currentUser!.uid )
+    int isFile = data['isFile'];
+    var alignment = (data['senderId'] == _firebaseAuth.currentUser!.uid)
         ? Alignment.centerRight
         : Alignment.centerLeft;
+
+    List<Widget> children = [];
+
+    // Check if the message is a file (0: text message, 1: file message)
+    if (isFile == 0) {
+      children.add(ChatBubble(
+        message: _encryptService.decrypt(data['message']),
+        secondMessage: timestamp.toDate().toString().substring(11, 16),
+        myMessage: data['senderId'] == _firebaseAuth.currentUser!.uid,
+      ));
+    } else if (isFile == 1) {
+      String url = data['message'];
+
+      children.add(
+        FutureBuilder<String>(
+          future: _chatService.getContentTypeFromUrl(url),
+          builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return CircularProgressIndicator();
+            } else if (snapshot.connectionState == ConnectionState.done) {
+              if (snapshot.hasData) {
+                String contentType = snapshot.data!;
+                if (contentType.startsWith('image/')) {
+                  return Image.network(url);
+                } else if (contentType.startsWith('video/')) {
+                  VideoPlayerController videoPlayerController =
+                  VideoPlayerController.network(url);
+                  return Chewie(
+                    controller: ChewieController(
+                      videoPlayerController: videoPlayerController,
+                      autoPlay: false,
+                      looping: false,
+                    ),
+                  );
+                } else {
+                  // Unsupported file type, you can handle it accordingly
+                  return Text('Unsupported file type');
+                }
+              } else if (snapshot.hasError) {
+                // Handle error
+                return Text('Error loading file');
+              } else {
+                // Future completed, but no data or error
+                return Text('No data available');
+              }
+            }
+            // The future has not completed, return an empty container or a placeholder widget.
+            return Container();
+          },
+        ),
+      );
+    }
 
     return Container(
       alignment: alignment,
       padding: const EdgeInsets.all(6),
       child: Column(
-        crossAxisAlignment:
-        (data['senderId'] == _firebaseAuth.currentUser!.uid )
+        crossAxisAlignment: (data['senderId'] == _firebaseAuth.currentUser!.uid)
             ? CrossAxisAlignment.end
             : CrossAxisAlignment.start,
-        mainAxisAlignment:
-        (data['senderId'] == _firebaseAuth.currentUser!.uid )
+        mainAxisAlignment: (data['senderId'] == _firebaseAuth.currentUser!.uid)
             ? MainAxisAlignment.end
             : MainAxisAlignment.start,
+        children: children,
+      ),
+    );
+  }
 
+
+
+
+
+
+
+
+  // build message input
+  Widget _buildMessageInput() {
+    return Container(
+      padding: EdgeInsets.all(2),
+      child: Stack(
         children: [
-          ChatBubble(message: _encryptService.decrypt(data['message']), secondMessage: timestamp.toDate().toString().substring(11,16 ), myMessage: data['senderId'] == _firebaseAuth.currentUser!.uid,),
-
-
+          Row(
+            children: [
+              // IconButton links
+              IconButton(
+                  icon: Icon(Icons.camera),
+                  iconSize: 30,
+                  onPressed: () => _showPicker(context)
+                // Aktion für den linken IconButton
+              ),
+              Expanded(
+                child: Container(
+                  padding: EdgeInsets.fromLTRB(5.0, 5.0, 5.0, 5.0),
+                  child: TextField(
+                    controller: _messageController,
+                    decoration: InputDecoration(
+                      hintText: 'Enter your text',
+                      hintStyle: TextStyle(
+                        color: Colors.grey[400],
+                      ),
+                      suffixIcon: IconButton(
+                        icon: Icon(Icons.send),
+                        iconSize: 30,
+                        onPressed: sendMessage,
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey[200],
+                      contentPadding: EdgeInsets.fromLTRB(15, 0, 0, 0),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(25.0),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  // build message input
-  Widget _buildMessageInput(){
-    return Row(
-
-      children: [
-        const Padding(padding: EdgeInsets.all(2)),
-        // textfield
-        Expanded(
-            child:
-
-            Container(
-              padding: EdgeInsets.fromLTRB(5.0, 5.0, 5.0, 5.0), // Abstand von allen Seiten
-              child: TextField(
-                controller: _messageController,
-                decoration: InputDecoration(
-                  hintText: 'Enter your text',
-                  hintStyle: TextStyle(
-                    color: Colors.grey[400],
-                  ),
-                  suffixIcon: IconButton(
-                    icon: Icon(Icons.send),
-                    iconSize: 30,
-                    onPressed: sendMessage,
-                  ),
-                  filled: true,
-                  fillColor: Colors.grey[200],
-                  contentPadding: EdgeInsets.fromLTRB(15, 0, 0, 0), // Kein zusätzliches Padding im TextField
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(25.0), // Runde Ecken
-                  ),
-                ),
-              ),
-            )
-
-
-        ),
-
-      ],
-    );
-  }
 
   void resetCounter() async {
     final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
@@ -189,5 +291,32 @@ class _ChatPageState extends State<ChatPage> {
         .collection('counter')
         .doc(currentUserId)
         .set({'newMessageCounter': 0});
+  }
+
+
+
+  void _showPicker(context){
+    showModalBottomSheet(context: context, builder: (BuildContext bc){
+      return SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: Icon(Icons.photo_library),
+              title: Text("Gallery"),
+              onTap:
+                imgFromGallery
+
+            ),
+            ListTile(
+              leading: Icon(Icons.photo_camera),
+              title: Text("Camera"),
+              onTap: (){
+
+              },
+            )
+          ],
+        ),
+      );
+    });
   }
 }

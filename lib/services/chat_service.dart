@@ -1,8 +1,11 @@
+import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:encrypt/encrypt.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 
 import '../components/message.dart';
@@ -16,20 +19,63 @@ class ChatService extends ChangeNotifier {
   final FirebaseFirestore _fireStore = FirebaseFirestore.instance;
 
 
-
   //Send Message
   Future<void> sendMessage(String receiverId, Encrypted encryptedData) async {
-
     // get current user information
     final String currentUserId = _firebaseAuth.currentUser!.uid;
     final Timestamp timestamp = Timestamp.now();
 
     // create a new message
     Message newMessage = Message(
+        senderId: currentUserId,
+        receiverId: receiverId,
+        timestamp: timestamp,
+        message: encryptedData.base64,
+        isFile: 0
+    );
+
+    // construct chat room id from current user id and receiver id (damit einzigartig)
+    List<String> ids = [currentUserId, receiverId];
+    ids.sort(); //damit es immer die gleiche ID ist, für alle Chatpartner
+    String chatRoomId = ids.join("_"); //kombiniert die IDs
+
+
+    // add new message to database
+    await _fireStore
+        .collection('chat_rooms')
+        .doc(chatRoomId)
+        .collection('messages')
+        .add(newMessage
+        .toMap());
+
+    updateNewMessageCounter(chatRoomId, receiverId);
+
+    final DocumentReference chatroomDocRef = FirebaseFirestore.instance
+        .collection('chat_rooms')
+        .doc(chatRoomId);
+
+
+    // 'receiverId'-Dokument existiert nicht, es erstellen mit newMessageCounter = 0
+    chatroomDocRef.update({
+      'lastContact': Timestamp.now(),
+    });
+  }
+
+  Future<void> sendFileMessage(String receiverId, String url) async {
+    // get current user information
+    final String currentUserId = _firebaseAuth.currentUser!.uid;
+    final Timestamp timestamp = Timestamp.now();
+
+    // construct the URL for the file in Firebase Storage
+    String sendUrl = await getImgUrl(url);
+
+    // create a new message
+    Message newMessage = Message(
       senderId: currentUserId,
       receiverId: receiverId,
       timestamp: timestamp,
-      message: encryptedData.base64
+      message: sendUrl,
+      isFile: 1,
     );
 
     // construct chat room id from current user id and receiver id (damit einzigartig)
@@ -61,7 +107,7 @@ class ChatService extends ChangeNotifier {
 
 
   // Get Message
-  Stream<QuerySnapshot> getMessages(String userId, String otherUserId){
+  Stream<QuerySnapshot> getMessages(String userId, String otherUserId) {
     //construct chat room id from user ids
     List<String> ids = [userId, otherUserId];
     ids.sort(); //damit es immer die gleiche ID ist, für alle Chatpartner
@@ -90,7 +136,9 @@ class ChatService extends ChangeNotifier {
         receiverDocRef.set({'newMessageCounter': 1});
       } else {
         // 'receiverId'-Dokument existiert, aktuellen newMessageCounter-Wert abrufen
-        Map<String, dynamic>? data = receiverSnapshot.data() as Map<String, dynamic>?;
+        Map<String, dynamic>? data = receiverSnapshot.data() as Map<
+            String,
+            dynamic>?;
 
         int currentCounter = data?['newMessageCounter'] ?? 0;
 
@@ -108,7 +156,44 @@ class ChatService extends ChangeNotifier {
       print('Fehler beim Lesen des Dokuments: $error');
     });
   }
+
+
+  Future getImgUrl(String name) async {
+    final spaceRef = FirebaseStorage.instance.ref("chat").child(name);
+    var str = await spaceRef.getDownloadURL();
+    return str ?? ""; // if empty return ""
   }
+
+
+  Future<String> uploadFile(File? photo) async {
+    if (photo == null) return '';
+
+    try {
+      String fileName = getRandomString(20);
+      final ref = FirebaseStorage.instance.ref("chat/$fileName");
+      await ref.putFile(photo).whenComplete(() => null);
+      return fileName;
+    } catch (e) {
+      print('There is an error $e');
+      return '';
+    }
+  }
+
+  String getRandomString(int len) {
+    var r = Random();
+    String characters = "abcdefghijklmnopqrstuvwxyz0123456789";
+    return String.fromCharCodes(
+      List.generate(
+          len, (index) => characters.codeUnitAt(r.nextInt(characters.length))),
+    );
+  }
+
+  Future<String> getContentTypeFromUrl(String url) async {
+    final spaceRef = FirebaseStorage.instance.refFromURL(url);
+    final metadata = await spaceRef.getMetadata();
+    return metadata.contentType!;
+  }
+}
 
 
 
