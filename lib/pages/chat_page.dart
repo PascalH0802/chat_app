@@ -20,6 +20,7 @@ import 'package:multi_image_picker/multi_image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 
 
+import '../components/media_bubble.dart';
 import '../components/my_chat_text_field.dart';
 
 
@@ -46,7 +47,7 @@ class _ChatPageState extends State<ChatPage> {
   File? _photo;
   final FilePicker _picker = FilePicker.platform;
 
-  Future imgFromGallery() async {
+  Future fileFromGallery() async {
     final pickedFiles = await _picker.pickFiles(
       allowMultiple: true,
     );
@@ -63,6 +64,23 @@ class _ChatPageState extends State<ChatPage> {
       }
     } else {
       print('No files selected');
+    }
+  }
+
+  Future<void> imgFromCamera() async {
+    final pickedFile = await ImagePicker().pickImage(
+      source: ImageSource.camera,
+      maxWidth: 800,
+      maxHeight: 800,
+      imageQuality: 80,
+    );
+
+    if (pickedFile != null) {
+      String fileName = await _chatService.uploadFile(File(pickedFile.path));
+      if (fileName.isNotEmpty) {
+        _uploadedFileName = fileName;
+        await _chatService.sendFileMessage(widget.receiverUserID, _uploadedFileName!);
+      }
     }
   }
 
@@ -166,6 +184,8 @@ class _ChatPageState extends State<ChatPage> {
       ));
     } else if (isFile == 1) {
       String url = data['message'];
+      Timestamp uneditedTimestamp = data['timestamp'];
+      String tempTimestamp = uneditedTimestamp.toDate().toString().substring(11, 16);
 
       children.add(
         FutureBuilder<String>(
@@ -177,17 +197,9 @@ class _ChatPageState extends State<ChatPage> {
               if (snapshot.hasData) {
                 String contentType = snapshot.data!;
                 if (contentType.startsWith('image/')) {
-                  return Image.network(url);
+                  return _buildImageBubble(url, alignment, tempTimestamp);
                 } else if (contentType.startsWith('video/')) {
-                  VideoPlayerController videoPlayerController =
-                  VideoPlayerController.network(url);
-                  return Chewie(
-                    controller: ChewieController(
-                      videoPlayerController: videoPlayerController,
-                      autoPlay: false,
-                      looping: false,
-                    ),
-                  );
+                  return _buildVideoBubble(url, alignment, tempTimestamp);
                 } else {
                   // Unsupported file type, you can handle it accordingly
                   return Text('Unsupported file type');
@@ -276,6 +288,36 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
+  Widget _buildImageBubble(String imageUrl, Alignment alignment, String timestamp) {
+    return MediaBubble(
+      content: Container(
+        constraints: BoxConstraints(maxWidth: 200),
+        child: Image.network(imageUrl),
+        alignment: alignment,
+      ),
+      secondMessage: timestamp,
+      myMessage: alignment == Alignment.centerRight,
+    );
+  }
+
+  Widget _buildVideoBubble(String videoUrl, Alignment alignment, String timestamp) {
+    return MediaBubble(
+      content: Container(
+        constraints: BoxConstraints(maxWidth: 200),
+        child: Chewie(
+          controller: ChewieController(
+            videoPlayerController: VideoPlayerController.network(videoUrl),
+            autoPlay: false,
+            looping: false,
+          ),
+        ),
+        alignment: alignment,
+      ),
+      secondMessage: timestamp,
+      myMessage: alignment == Alignment.centerRight,
+    );
+  }
+
 
   void resetCounter() async {
     final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
@@ -303,16 +345,15 @@ class _ChatPageState extends State<ChatPage> {
             ListTile(
               leading: Icon(Icons.photo_library),
               title: Text("Gallery"),
-              onTap:
-                imgFromGallery
+                onTap: () {fileFromGallery();
+                Navigator.pop(context);}
 
             ),
             ListTile(
               leading: Icon(Icons.photo_camera),
               title: Text("Camera"),
-              onTap: (){
-
-              },
+              onTap: () {imgFromCamera();
+                Navigator.pop(context);}
             )
           ],
         ),

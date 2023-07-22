@@ -48,6 +48,7 @@ dependencies:
   chewie: ^1.7.0
   multi_image_picker: ^4.8.01
   file_picker: ^5.3.2
+  url_launcher: ^6.1.12
 
 dev_dependencies:
   flutter_test:
