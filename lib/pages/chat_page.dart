@@ -18,10 +18,12 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:multi_image_picker/multi_image_picker.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:video_player/video_player.dart';
 
 
 import '../components/media_bubble.dart';
 import '../components/my_chat_text_field.dart';
+import 'media_page.dart';
 
 
 
@@ -289,7 +291,19 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Widget _buildImageBubble(String imageUrl, Alignment alignment, String timestamp) {
-    return MediaBubble(
+    return GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => MediaPage(
+                mediaUrl: imageUrl,
+                isVideo: false,
+              ),
+            ),
+          );
+        },
+    child: MediaBubble(
       content: Container(
         constraints: BoxConstraints(maxWidth: 200),
         child: Image.network(imageUrl),
@@ -297,24 +311,46 @@ class _ChatPageState extends State<ChatPage> {
       ),
       secondMessage: timestamp,
       myMessage: alignment == Alignment.centerRight,
+    )
     );
   }
 
   Widget _buildVideoBubble(String videoUrl, Alignment alignment, String timestamp) {
-    return MediaBubble(
+    return GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => MediaPage(
+                mediaUrl: videoUrl,
+                isVideo: true,
+              ),
+            ),
+          );
+        },
+      child: MediaBubble(
       content: Container(
-        constraints: BoxConstraints(maxWidth: 200),
+        constraints: BoxConstraints(maxWidth: 200, maxHeight: 300),
+        // child: VideoPlayer(
+        //
+        //   VideoPlayerController.network(videoUrl)
+        // ),
+
         child: Chewie(
           controller: ChewieController(
-            videoPlayerController: VideoPlayerController.network(videoUrl),
+            videoPlayerController: VideoPlayerController.networkUrl(Uri.parse(videoUrl)),
             autoPlay: false,
             looping: false,
+            aspectRatio: 9/16,
+            showOptions: false,
+            showControls: false,
           ),
         ),
         alignment: alignment,
       ),
       secondMessage: timestamp,
       myMessage: alignment == Alignment.centerRight,
+    )
     );
   }
 
