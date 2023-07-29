@@ -2,9 +2,11 @@ import 'package:anonymous_chat/pages/add_contact_page.dart';
 import 'package:anonymous_chat/services/auth_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'chat_page.dart';
 
@@ -28,6 +30,32 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  //instance of firestore
+  final FirebaseFirestore _fireStore = FirebaseFirestore.instance;
+
+  @override
+  void initState()  {
+    initMessaging();
+    super.initState();
+  }
+
+  Future<void> initMessaging() async {
+    await FirebaseMessaging.instance.requestPermission();
+    final String currentUserId = _auth.currentUser!.uid;
+
+    await _fireStore.collection('users').doc(currentUserId).update({
+      'token': await FirebaseMessaging.instance.getToken()
+    });
+
+
+    FirebaseMessaging.onMessage.listen((event) {
+      print('App im Vordergrund offen');
+    });
+    FirebaseMessaging.onMessageOpenedApp.listen((event) {
+      print('App im hintergrund offen');
+    });
+  }
 
   void signOut() {
     final authService = Provider.of<AuthService>(context, listen: false);

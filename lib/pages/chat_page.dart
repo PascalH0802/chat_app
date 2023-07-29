@@ -339,8 +339,8 @@ class _ChatPageState extends State<ChatPage> {
         child: Chewie(
           controller: ChewieController(
             videoPlayerController: VideoPlayerController.networkUrl(Uri.parse(videoUrl)),
-            autoPlay: false,
-            looping: false,
+            autoPlay: true,
+            looping: true,
             aspectRatio: 9/16,
             showOptions: false,
             showControls: false,

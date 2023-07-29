@@ -5,8 +5,11 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:encrypt/encrypt.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_admin/firebase_admin.dart';
 
 import '../components/message.dart';
 
@@ -17,6 +20,31 @@ class ChatService extends ChangeNotifier {
 
   //instance of firestore
   final FirebaseFirestore _fireStore = FirebaseFirestore.instance;
+
+  Future<void> sendMessagePush(String receiverId) async {
+    final FirebaseMessaging _fcm = FirebaseMessaging.instance;
+
+    DocumentReference userDocRef = _fireStore.collection('users').doc(receiverId);
+
+
+
+    userDocRef.get().then((docSnapshot) async {
+      if(docSnapshot.exists){
+        //userdata exists
+        Map<String, dynamic>? userData = docSnapshot.data() as Map<String, dynamic>?; // Typumwandlung hinzugefügt
+         String token = userData!['token'];
+         String username = userData['username'];
+         Map<String, String> data = {'username': username, 'message': 'new messages'};
+
+        await _fcm.sendMessage(to: token, data: data );
+
+      }
+    });
+
+
+
+
+  }
 
 
   //Send Message
@@ -59,6 +87,9 @@ class ChatService extends ChangeNotifier {
     chatroomDocRef.update({
       'lastContact': Timestamp.now(),
     });
+
+    sendMessagePush(receiverId);
+
   }
 
   Future<void> sendFileMessage(String receiverId, String url) async {
@@ -103,6 +134,10 @@ class ChatService extends ChangeNotifier {
     chatroomDocRef.update({
       'lastContact': Timestamp.now(),
     });
+
+
+    sendMessagePush(receiverId);
+
   }
 
 

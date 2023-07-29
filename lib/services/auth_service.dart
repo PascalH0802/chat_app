@@ -52,6 +52,7 @@ class AuthService extends ChangeNotifier{
         'pendingContacts' : [],
         'sentContactRequests' : [],
         'contactList' : [],
+        'token': ''
       }, SetOptions(merge: true));
 
       return userCredential;
