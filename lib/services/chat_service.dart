@@ -20,31 +20,35 @@ class ChatService extends ChangeNotifier {
 
   //instance of firestore
   final FirebaseFirestore _fireStore = FirebaseFirestore.instance;
-
   Future<void> sendMessagePush(String receiverId) async {
     final FirebaseMessaging _fcm = FirebaseMessaging.instance;
-
     DocumentReference userDocRef = _fireStore.collection('users').doc(receiverId);
 
-
-
-    userDocRef.get().then((docSnapshot) async {
-      if(docSnapshot.exists){
+    try {
+      final docSnapshot = await userDocRef.get();
+      if (docSnapshot.exists) {
         //userdata exists
-        Map<String, dynamic>? userData = docSnapshot.data() as Map<String, dynamic>?; // Typumwandlung hinzugefügt
-         String token = userData!['token'];
-         String username = userData['username'];
-         Map<String, String> data = {'username': username, 'message': 'new messages'};
-
-        await _fcm.sendMessage(to: token, data: data );
-
+        Map<String, dynamic>? userData = docSnapshot.data() as Map<String, dynamic>?;
+        if (userData != null) {
+          String token = userData['token'];
+          String username = userData['username'];
+          if (token != null && username != null) {
+            Map<String, String> data = {'username': username, 'message': 'new messages'};
+            await _fcm.sendMessage(to: token, data: data);
+          } else {
+            print("Token or username is null.");
+          }
+        } else {
+          print("userData is null.");
+        }
+      } else {
+        print("Document does not exist for receiverId: $receiverId");
       }
-    });
-
-
-
-
+    } catch (e) {
+      print("Error while sending FCM message: $e");
+    }
   }
+
 
 
   //Send Message

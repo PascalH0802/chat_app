@@ -2,6 +2,7 @@ import 'package:anonymous_chat/firebase_options.dart';
 import 'package:anonymous_chat/pages/login_page.dart';
 import 'package:anonymous_chat/services/auth_service.dart';
 import 'package:anonymous_chat/services/login_or_register.dart';
+import 'package:anonymous_chat/services/notification_serive.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -20,9 +21,8 @@ Future<void> onBackgroundMessage(RemoteMessage message) async {
 //@pragma('vm:entry-point')
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
-  FirebaseMessaging.onBackgroundMessage(onBackgroundMessage);
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.android);
+  await NotificationService().initNotification();
 
   runApp(
     ChangeNotifierProvider(

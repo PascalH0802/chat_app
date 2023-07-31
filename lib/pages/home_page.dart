@@ -47,14 +47,6 @@ class _HomePageState extends State<HomePage> {
     await _fireStore.collection('users').doc(currentUserId).update({
       'token': await FirebaseMessaging.instance.getToken()
     });
-
-
-    FirebaseMessaging.onMessage.listen((event) {
-      print('App im Vordergrund offen');
-    });
-    FirebaseMessaging.onMessageOpenedApp.listen((event) {
-      print('App im hintergrund offen');
-    });
   }
 
   void signOut() {
