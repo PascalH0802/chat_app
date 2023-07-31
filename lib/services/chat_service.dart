@@ -10,6 +10,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_admin/firebase_admin.dart';
+import 'package:http/http.dart';
 
 import '../components/message.dart';
 
@@ -20,23 +21,43 @@ class ChatService extends ChangeNotifier {
 
   //instance of firestore
   final FirebaseFirestore _fireStore = FirebaseFirestore.instance;
+
   Future<void> sendMessagePush(String receiverId) async {
-    final FirebaseMessaging _fcm = FirebaseMessaging.instance;
+
     DocumentReference userDocRef = _fireStore.collection('users').doc(receiverId);
+
+    final String currentUserId = _firebaseAuth.currentUser!.uid;
+    DocumentReference currentUserDocRef = _fireStore.collection('users').doc(currentUserId);
 
     try {
       final docSnapshot = await userDocRef.get();
-      if (docSnapshot.exists) {
+      final currentUserDocSnapshot = await currentUserDocRef.get();
+      if (docSnapshot.exists && currentUserDocSnapshot.exists) {
         //userdata exists
         Map<String, dynamic>? userData = docSnapshot.data() as Map<String, dynamic>?;
-        if (userData != null) {
+        Map<String, dynamic>? currentUserData = currentUserDocSnapshot.data() as Map<String, dynamic>?;
+        if (userData != null && currentUserData != null) {
           String token = userData['token'];
-          String username = userData['username'];
-          if (token != null && username != null) {
-            Map<String, String> data = {'username': username, 'message': 'new messages'};
-            await _fcm.sendMessage(to: token, data: data);
-          } else {
-            print("Token or username is null.");
+          String username = currentUserData['username'];
+          try{
+            final body = {
+              "to" : token,
+              "notification": {
+                "title": username,
+                "body": "New message"
+              }
+            };
+            var res = await post(Uri.parse('https://fcm.googleapis.com/fcm/send'),
+                headers: {
+                  HttpHeaders.contentTypeHeader: 'application/json',
+                  HttpHeaders.authorizationHeader: 'key=AAAAdAKkJ1w:APA91bHlQCyTNHqYkKlkIWGD9GJUbsFY6oP1fdU4iDdrJhykwIuZKWEkmHBTNk91zgzoB04TcAgUIzsS0HvwTuJNJQBV9D_BwZYZimgMLE5SkYDkRN4NASq4zCJWImBTDE-LjqkLUzY-'
+                },
+                body: jsonEncode(body));
+            print('Response status: ${res.statusCode}');
+            print('Response body: ${res.body}');
+          }
+          catch(e){
+            print('\nsendPushNotificationE: $e');
           }
         } else {
           print("userData is null.");
