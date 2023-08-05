@@ -29,7 +29,7 @@ class ChatBubble extends StatelessWidget {
         ));
       } else {
         // Wenn das Wort kein Link ist, füge es einfach als normalen TextSpan hinzu
-        textSpans.add(TextSpan(text: '$word'));
+        textSpans.add(TextSpan(text: '$word '));
       }
     }
 

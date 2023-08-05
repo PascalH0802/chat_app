@@ -12,7 +12,6 @@ class EncryptService  {
 
 String keyString = 'PqokAO1BQBHyJVKv';
 
-
   String decrypt(String encryptedDataString) {
 
     List<int> encryptedDataBytes = base64.decode(encryptedDataString);
