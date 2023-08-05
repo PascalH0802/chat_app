@@ -5,6 +5,7 @@ import 'package:anonymous_chat/services/request_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:provider/provider.dart';
 
 class AddContactPage extends StatefulWidget {
@@ -31,6 +32,7 @@ class _AddContactPageState extends State<AddContactPage> {
 
     if (_usernameSearchController.text.isNotEmpty) {
 
+      String name = _usernameSearchController.text;
 
       QuerySnapshot querySnapshot = await FirebaseFirestore.instance
           .collection('users')
@@ -43,9 +45,24 @@ class _AddContactPageState extends State<AddContactPage> {
           String uid = querySnapshot.docs.first.id;
           await _requestService.sendRequest(uid);
 
+          Fluttertoast.showToast(
+            msg: 'Request sent to $name',
+            toastLength: Toast.LENGTH_SHORT,
+            gravity: ToastGravity.BOTTOM,
+            backgroundColor: Colors.green,
+            textColor: Colors.white,
+          );
+
 
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No user with that username found')));
+
+        Fluttertoast.showToast(
+          msg: 'No user with that username found',
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+        );
       }
 
       _usernameSearchController.clear();

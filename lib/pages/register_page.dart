@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:provider/provider.dart';
 
 import '../components/my_button.dart';
@@ -22,7 +23,13 @@ class _RegisterPageState extends State<RegisterPage> {
 
   void signUp() async {
     if(passwordController.text != confirmPasswordController.text){
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Passwords don't match")));
+        Fluttertoast.showToast(
+          msg: "Passwords don't match",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+        );
         return;
     }
 
@@ -32,7 +39,13 @@ class _RegisterPageState extends State<RegisterPage> {
     try{
       await authService.signUpWithUsernameAndPassword(usernameController.text, passwordController.text);
     }catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Username already in use')));
+      Fluttertoast.showToast(
+        msg: "Username already in use",
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
+      );
     }
   }
 

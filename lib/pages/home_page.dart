@@ -1,4 +1,5 @@
 import 'package:anonymous_chat/pages/add_contact_page.dart';
+import 'package:anonymous_chat/pages/imprint_page.dart';
 import 'package:anonymous_chat/services/auth_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -8,6 +9,8 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'about_us_page.dart';
+import 'change_password_page.dart';
 import 'chat_page.dart';
 
 class User implements Comparable<User> {
@@ -22,7 +25,9 @@ class User implements Comparable<User> {
 }
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  const HomePage({super.key, this.onTap});
+
+  final void Function()? onTap;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -30,6 +35,8 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
 
   //instance of firestore
   final FirebaseFirestore _fireStore = FirebaseFirestore.instance;
@@ -247,25 +254,105 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.deepPurple,
-        centerTitle: true,
-        title: const Text('My Chats'),
-        actions: [
-          IconButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => AddContactPage(onTap: () {})),
-              );
-            },
-            icon: const Icon(Icons.add_rounded),
+    return MaterialApp(
+      home: Scaffold(
+        key: _scaffoldKey, // Weisen Sie dem Scaffold die GlobalKey zu
+        appBar: AppBar(
+          backgroundColor: Colors.deepPurple,
+          titleSpacing: 0,
+          title: const Row(
+            children: [
+              SizedBox(width: 40), // Fügen Sie Abstand zwischen dem Icon und dem Titel hinzu
+              Expanded(
+                child: Center(
+                  child: Text('My Chats'), // Der Titel der AppBar
+                ),
+              ),
+            ],
           ),
-          IconButton(onPressed: signOut, icon: const Icon(Icons.logout))
-        ],
+          actions: [
+            IconButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => AddContactPage(onTap: () {})),
+                );
+              },
+              icon: const Icon(Icons.add_rounded),
+            ),
+            IconButton(
+              onPressed: signOut,
+              icon: const Icon(Icons.logout),
+            ),
+          ],
+        ),
+        drawer: buildDrawer(context), // Verwenden Sie die Funktion, um den Drawer zu erstellen
+        body: _buildUserList(),
       ),
-      body: _buildUserList(),
     );
   }
+
+  // Funktion zum Erstellen des Drawers
+  Widget buildDrawer(BuildContext context) {
+    return Drawer(
+      child: Column(
+        children: <Widget>[
+          Expanded(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: <Widget>[
+          const DrawerHeader(
+            child: Text('Header des Drawers'),
+            decoration: BoxDecoration(
+              color: Colors.deepPurple,
+            ),
+          ),
+          ListTile(
+            leading: Icon(Icons.home),
+            title: Text('My Chats'),
+            onTap: () {
+              // Aktion, die ausgeführt wird, wenn der Startseite-Eintrag geklickt wird
+              _scaffoldKey.currentState?.openEndDrawer(); // Schließen Sie den Drawer
+              // Hier können Sie die gewünschte Aktion für die Startseite ausführen
+            },
+          ),
+          ListTile(
+            leading: Icon(Icons.settings),
+            title: Text('Change password'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => ChangePasswordPage(onTap: () {})),
+              );
+            },
+          ),
+          ListTile(
+            leading: Icon(Icons.info_outlined),
+            title: Text('About Us'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => AboutUsPage(onTap: () {})),
+              );
+            },
+          ),
+        ],
+      ),
+          ),
+          // Option ganz unten im Drawer
+          ListTile(
+            leading: Icon(Icons.info),
+            title: Text('Imprint'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => ImprintPage(onTap: () {})),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
 }

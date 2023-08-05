@@ -2,6 +2,7 @@ import 'package:anonymous_chat/components/my_button.dart';
 import 'package:anonymous_chat/components/my_text_field.dart';
 import 'package:anonymous_chat/services/auth_service.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:provider/provider.dart';
 
 class LoginPage extends StatefulWidget {
@@ -25,7 +26,13 @@ class _LoginPageState extends State<LoginPage> {
     try{
       await authService.signInWithUsernameAndPassword(usernameController.text, passwordController.text);
     }catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password or username incorrect')));
+      Fluttertoast.showToast(
+        msg: 'Password or username incorrect',
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
+      );
     }
   }
 
