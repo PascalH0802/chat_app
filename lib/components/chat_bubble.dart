@@ -23,7 +23,7 @@ class ChatBubble extends StatelessWidget {
       if (Uri.tryParse(word)?.isAbsolute ?? false) {
         // Wenn das Wort ein Link ist, füge es als anklickbaren TextSpan hinzu
         textSpans.add(TextSpan(
-          text: '$word ',
+          text: '$word',
           style: TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
           recognizer: TapGestureRecognizer()..onTap = () => _launchURL(word),
         ));
@@ -43,7 +43,7 @@ class ChatBubble extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        color: myMessage ? Colors.blue : Colors.purpleAccent,
+        color: myMessage ? Colors.yellow : Colors.purpleAccent,
         border: Border.all(color: Colors.deepPurple, width: 2.0),
       ),
       child: Column(
