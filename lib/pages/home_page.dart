@@ -41,10 +41,13 @@ class _HomePageState extends State<HomePage> {
   //instance of firestore
   final FirebaseFirestore _fireStore = FirebaseFirestore.instance;
 
+  late Future<bool> markerFuture;
+
   @override
   void initState()  {
     initMessaging();
     super.initState();
+    markerFuture = showMarker();
   }
 
   Future<void> initMessaging() async {
@@ -60,6 +63,28 @@ class _HomePageState extends State<HomePage> {
     final authService = Provider.of<AuthService>(context, listen: false);
     authService.signOut();
   }
+
+ Future<bool> showMarker()  async {
+
+   final String currentUserId = _auth.currentUser!.uid;
+   DocumentSnapshot<Map<String, dynamic>> snapshot = await FirebaseFirestore.instance
+       .collection('users')
+       .doc(currentUserId)
+       .get();
+
+    if (snapshot.exists) {
+      Map<String, dynamic> userData = snapshot.data()!;
+      if(List.from(userData['pendingContacts']).isNotEmpty){
+        return true;
+      }else{
+        return false;
+      }
+
+    } else {
+      return false;
+    }
+  }
+
 
   Widget _buildUserList() {
     final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
@@ -252,41 +277,65 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       home: Scaffold(
-        key: _scaffoldKey, // Weisen Sie dem Scaffold die GlobalKey zu
+        key: _scaffoldKey,
         appBar: AppBar(
           backgroundColor: Colors.deepPurple,
           titleSpacing: 0,
           title: const Row(
             children: [
-              SizedBox(width: 40), // Fügen Sie Abstand zwischen dem Icon und dem Titel hinzu
+              SizedBox(width: 40),
               Expanded(
                 child: Center(
-                  child: Text('My Chats'), // Der Titel der AppBar
+                  child: Text('My Chats'),
                 ),
               ),
             ],
           ),
           actions: [
-            IconButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => AddContactPage(onTap: () {})),
+            FutureBuilder<bool>(
+              future: markerFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Container(); // Hier kannst du einen Ladeindikator anzeigen, wenn noch keine Daten verfügbar sind
+                }
+
+                return IconButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => AddContactPage(onTap: () {})),
+                    );
+                  },
+                  icon: Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      Icon(Icons.add_rounded),
+                      if (snapshot.data == true)
+                        Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.yellow,
+                          ),
+                        ),
+                    ],
+                  ),
                 );
               },
-              icon: const Icon(Icons.add_rounded),
             ),
             IconButton(
               onPressed: signOut,
-              icon: const Icon(Icons.logout),
+              icon: Icon(Icons.logout),
             ),
           ],
         ),
-        drawer: buildDrawer(context), // Verwenden Sie die Funktion, um den Drawer zu erstellen
+        drawer: buildDrawer(context),
         body: _buildUserList(),
       ),
     );
