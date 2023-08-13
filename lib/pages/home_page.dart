@@ -14,14 +14,22 @@ import 'change_password_page.dart';
 import 'chat_page.dart';
 
 class User implements Comparable<User> {
-  String username;
-  String uid;
-  DateTime lastContact;
+  final String username;
+  final String uid;
+  final DateTime lastContact;
 
   User(this.username, this.uid, this.lastContact);
 
   @override
-  int compareTo(User other) => other.lastContact.compareTo(lastContact);
+  int compareTo(User other) {
+    if (lastContact.isBefore(other.lastContact)) {
+      return -1;
+    } else if (lastContact.isAfter(other.lastContact)) {
+      return 1;
+    } else {
+      return 0;
+    }
+  }
 }
 
 class HomePage extends StatefulWidget {
@@ -90,8 +98,8 @@ class _HomePageState extends State<HomePage> {
     final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
     final String currentUserId = _firebaseAuth.currentUser!.uid;
 
-    return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance.collection('users').doc(currentUserId).snapshots(),
+    return FutureBuilder<DocumentSnapshot>(
+      future: FirebaseFirestore.instance.collection('users').doc(currentUserId).get(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return const Text('Error');
@@ -107,18 +115,14 @@ class _HomePageState extends State<HomePage> {
           return const Text('No contacts');
         }
 
-        return StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance
+        return FutureBuilder<QuerySnapshot>(
+          future: FirebaseFirestore.instance
               .collection('users')
               .where('uid', whereIn: contactList)
-              .snapshots(),
+              .get(),
           builder: (context, snapshot) {
             if (snapshot.hasError) {
               return const Text('Error');
-            }
-
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Text('Loading..');
             }
 
             final List<DocumentSnapshot> userDocs = snapshot.data!.docs;
@@ -127,28 +131,56 @@ class _HomePageState extends State<HomePage> {
               return const Text('No contacts');
             }
 
-            List<User> users = userDocs.map((doc) {
+            List<Future<User>> userFutures = userDocs.map((doc) async {
               Map<String, dynamic> data = doc.data()! as Map<String, dynamic>;
-              Timestamp? lastContactTimestamp = data['lastContact'] as Timestamp?;
-              DateTime lastContactDateTime = lastContactTimestamp?.toDate() ?? DateTime(1900);
+
+              List<String> ids = [currentUserId, data['uid']];
+              ids.sort();
+              String chatRoomId = ids.join("_");
+              DocumentReference chatRoomRef = FirebaseFirestore.instance.collection('chat_rooms').doc(chatRoomId);
+
+              DocumentSnapshot chatRoomSnapshot = await chatRoomRef.get();
+              Map<String, dynamic> chatRoomData = chatRoomSnapshot.data() as Map<String, dynamic>;
+              Timestamp lastContactTimestamp = chatRoomData['lastContact'] as Timestamp;
+
+              DateTime lastContactDateTime = lastContactTimestamp.toDate();
               return User(data['username'], data['uid'], lastContactDateTime);
             }).toList();
 
-            users.sort();
+            return FutureBuilder<List<User>>(
+              future: Future.wait(userFutures),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return const Text('Error');
+                }
 
-            return ListView.separated(
-              separatorBuilder: (context, index) => Divider(
-                color: Colors.deepPurple,
-                height: 1,
-              ),
-              itemCount: users.length,
-              itemBuilder: (context, index) => _buildUserListItem(users[index]),
+                List<User> usersUnsorted = snapshot.data!;
+                List<User> users = [];
+
+                while (usersUnsorted.isNotEmpty) {
+                  User latestUser = usersUnsorted.reduce((a, b) => a.lastContact.isAfter(b.lastContact) ? a : b);
+                  users.add(latestUser);
+                  usersUnsorted.remove(latestUser);
+                }
+
+                return ListView.separated(
+                  separatorBuilder: (context, index) => Divider(
+                    color: Colors.deepPurple,
+                    height: 1,
+                  ),
+                  itemCount: users.length,
+                  itemBuilder: (context, index) => _buildUserListItem(users[index]),
+                );
+              },
             );
           },
         );
       },
     );
   }
+
+
+
 
   Widget _buildUserListItem(User user) {
     final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;

@@ -24,6 +24,7 @@ import 'package:video_player/video_player.dart';
 import '../components/media_bubble.dart';
 import '../components/my_chat_text_field.dart';
 import 'media_page.dart';
+import 'home_page.dart';
 
 
 
@@ -123,20 +124,39 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.deepPurple,
-        centerTitle: true,
-        title: Text(widget.receiverUserEmail),),
-      body: Column(
-        children: [
-          //messages
-          Expanded(
-            child: _buildMessageList(),
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => HomePage()),
+        );
+        return false; // Verhindert das Standardverhalten des Zurück-Buttons
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.deepPurple,
+          centerTitle: true,
+          title: Text(widget.receiverUserEmail),
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back),
+            onPressed: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => HomePage()),
+              );
+            },
           ),
-          //user input
-          _buildMessageInput(),
-        ],
+        ),
+        body: Column(
+          children: [
+            //messages
+            Expanded(
+              child: _buildMessageList(),
+            ),
+            //user input
+            _buildMessageInput(),
+          ],
+        ),
       ),
     );
   }

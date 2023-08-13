@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:provider/provider.dart';
 
+import 'home_page.dart';
+
 class AddContactPage extends StatefulWidget {
   final void Function()? onTap;
   const AddContactPage({super.key, required this.onTap});
@@ -80,12 +82,30 @@ class _AddContactPageState extends State<AddContactPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return WillPopScope(
+        onWillPop: () async {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => HomePage()),
+      );
+      return false; // Verhindert das Standardverhalten des Zurück-Buttons
+    },
+    child: Scaffold(
       backgroundColor: Colors.grey[300],
       appBar: AppBar(
         backgroundColor: Colors.deepPurple,
         centerTitle: true,
-        title: const Text('Add Contacts'),),
+        title: const Text('Add Contacts'),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => HomePage()),
+            );
+          },
+        ),),
+
       body: SafeArea(
           child: Center(
               child: Padding(
@@ -153,7 +173,9 @@ class _AddContactPageState extends State<AddContactPage> {
           )
 
       ),
-    );
+    ),
+  );
+
   }
 
 
